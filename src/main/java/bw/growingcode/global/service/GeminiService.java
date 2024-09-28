@@ -1,5 +1,6 @@
 package bw.growingcode.global.service;
 
+import bw.growingcode.code.enums.GeminiType;
 import bw.growingcode.global.config.utils.Utils;
 import bw.growingcode.global.dto.JsonRequest;
 import bw.growingcode.global.enums.AdditionalType;
@@ -9,10 +10,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -22,10 +25,24 @@ public class GeminiService {
     @Value("${google.gemini.key}")
     private String key;
 
-    public String getResult(String questionCode, QuestionType questionType, AdditionalType additionalType) throws JsonProcessingException {
+    @Async
+    public CompletableFuture<String> getResultAsync(GeminiType geminiType, String questionCode, QuestionType questionType, AdditionalType additionalType) {
+        // 외부 요청 처리 (시간이 걸리는 작업)
+        String result = getResult(geminiType, questionCode, questionType, additionalType);
+        return CompletableFuture.completedFuture(result);
+    }
+
+    public String getResult(GeminiType geminiType, String questionCode, QuestionType questionType, AdditionalType additionalType) {
         String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
         url += "?key=" + key;
-        String content = createQuestion(questionCode, questionType, additionalType);
+        String content;
+        if (geminiType == GeminiType.질문) {
+            content = createQuestion(questionCode, questionType, additionalType);
+        } else if (geminiType == GeminiType.키워드){
+            content = createKeywordQuestion(questionCode);
+        } else {
+            content = createReviewQuestion(questionCode);
+        }
         String jsonString = restTemplate.postForEntity(url, content, String.class).getBody();
 
         ObjectMapper objectMapper = new ObjectMapper();
@@ -52,7 +69,7 @@ public class GeminiService {
         }
     }
 
-    private String createQuestion(String questionCode, QuestionType questionType, AdditionalType additionalTypes) throws JsonProcessingException {
+    private String createQuestion(String questionCode, QuestionType questionType, AdditionalType additionalTypes) {
         StringBuilder sb = new StringBuilder();
         String decodedStr = Utils.decodeString(questionCode);
         sb.append(decodedStr).append("\n").append("\n");
@@ -75,7 +92,7 @@ public class GeminiService {
         return createJsonRequest(sb.toString());
     }
 
-    private String createJsonRequest(String content) throws JsonProcessingException {
+    private String createJsonRequest(String content) {
         // JsonRequest 객체 생성
         JsonRequest.Part part = new JsonRequest.Part();
         part.setText(content);
@@ -88,7 +105,28 @@ public class GeminiService {
 
         // ObjectMapper를 사용하여 Java 객체를 JSON 문자열로 변환
         ObjectMapper objectMapper = new ObjectMapper();
-        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(request);
+        String result = null;
+        try {
+            result = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(request);
+        } catch (Exception e) {
+        }
+        return result;
+    }
+
+    private String createKeywordQuestion(String questionCode) {
+        StringBuilder sb = new StringBuilder();
+        String decodedStr = Utils.decodeString(questionCode);
+        sb.append(decodedStr).append("\n").append("\n");
+        sb.append("이 코드의 미흡한 점을 인터넷에 검색해서 공부할려고 하는데 뭐라고 검색하면 될까? 한개만 알려줘");
+        return createJsonRequest(sb.toString());
+    }
+
+    private String createReviewQuestion(String questionCode) {
+        StringBuilder sb = new StringBuilder();
+        String decodedStr = Utils.decodeString(questionCode);
+        sb.append(decodedStr).append("\n").append("\n");
+        sb.append("이 코드의 미흡한 점을 최대 10줄로 요약해줘.");
+        return createJsonRequest(sb.toString());
     }
 
 }
