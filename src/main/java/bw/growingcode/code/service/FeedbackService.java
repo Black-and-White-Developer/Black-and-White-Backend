@@ -1,41 +1,71 @@
 package bw.growingcode.code.service;
 
+import bw.growingcode.code.domain.Keyword;
+import bw.growingcode.code.domain.Review;
 import bw.growingcode.code.dto.FeedbackDTO;
+import bw.growingcode.code.dto.RequestGenerateFeedbackDTO;
+import bw.growingcode.code.enums.GeminiType;
+import bw.growingcode.code.repository.KeywordRepository;
+import bw.growingcode.code.repository.ReviewRepository;
+import bw.growingcode.global.enums.QuestionType;
+import bw.growingcode.global.service.GeminiService;
+import bw.growingcode.user.domain.User;
+import bw.growingcode.user.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @Service
+@RequiredArgsConstructor
 public class FeedbackService {
+    
+    private final GeminiService geminiService;
+    private final KeywordRepository keywordRepository;
+    private final ReviewRepository reviewRepository;
+    private final UserRepository userRepository;
 
-    private final RestTemplate restTemplate;
-    private final String apiKey = "YOUR_API_KEY"; // 여기에 API 키를 추가하세요
-    private final String geminiApiUrl = "https://api.gemini.com/your-endpoint"; // 실제 Gemini API 엔드포인트
+    @Transactional
+    public CompletableFuture<FeedbackDTO> generateFeedback(RequestGenerateFeedbackDTO requestDto, Long userId) {
+        // User 조회
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("user not found"));
 
-    @Autowired
-    public FeedbackService(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
-    }
+        // 비동기 작업 시작 (동시에 실행되도록 설정)
+        CompletableFuture<String> readabilityFuture = geminiService.getResultAsync(GeminiType.질문, requestDto.code(), QuestionType.가독성, null);
+        CompletableFuture<String> performanceFuture = geminiService.getResultAsync(GeminiType.질문, requestDto.code(), QuestionType.성능, null);
+        CompletableFuture<String> keywordFuture = geminiService.getResultAsync(GeminiType.키워드, requestDto.code(), null, null);
+        CompletableFuture<String> reviewFuture = geminiService.getResultAsync(GeminiType.리뷰, requestDto.code(), null, null);
 
-    public FeedbackDTO generateFeedback(String code) {
-        // 요청할 데이터 구조를 정의
-        Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("code", code);
-        requestBody.put("api_key", apiKey);
+        // 모든 비동기 작업이 완료될 때까지 대기
+        return CompletableFuture.allOf(readabilityFuture, performanceFuture, keywordFuture, reviewFuture)
+            .thenApply(voidResult -> {
+                try {
+                    // 각 작업의 결과 가져오기
+                    String readabilityResult = readabilityFuture.join();
+                    String performanceResult = performanceFuture.join();
+                    String keywordResult = keywordFuture.join();
+                    String reviewResult = reviewFuture.join();
 
-        // Gemini API 호출
-        FeedbackResponse response = restTemplate.postForObject(geminiApiUrl, requestBody, FeedbackResponse.class);
+                    // 결과를 FeedbackDTO로 매핑
+                    FeedbackDTO feedbackDTO = new FeedbackDTO(readabilityResult, performanceResult);
 
-        // 결과를 FeedbackDTO로 매핑
-        FeedbackDTO feedbackDTO = new FeedbackDTO();
-        if (response != null) {
-            feedbackDTO.setReadabilityImprovement(response.getReadabilityImprovement()); // 가독성 향상 코드
-            feedbackDTO.setPerformanceImprovement(response.getPerformanceImprovement()); // 성능 향상 코드
-        }
+                    // 트랜잭션 내에서 키워드 저장
+                    keywordRepository.save(new Keyword(user, keywordResult));
 
-        return feedbackDTO;
+                    // 트랜잭션 내에서 요약 저장
+                    reviewRepository.save(new Review(user, requestDto.code(), reviewResult));
+
+                    return feedbackDTO;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    throw new RuntimeException("Failed to generate feedback", e);  // 예외 처리
+                }
+            });
     }
 }
