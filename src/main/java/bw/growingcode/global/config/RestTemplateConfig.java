@@ -20,8 +20,8 @@ public class RestTemplateConfig {
         messageConverters.add(0, new StringHttpMessageConverter(StandardCharsets.UTF_8));
 
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(5000);
-        requestFactory.setReadTimeout(5000);
+//        requestFactory.setConnectTimeout(5000);
+//        requestFactory.setReadTimeout(5000);
 
         restTemplate.setRequestFactory(requestFactory);
 
