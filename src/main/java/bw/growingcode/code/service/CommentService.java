@@ -49,13 +49,13 @@ public class CommentService {
         // 비동기 작업 시작
         CompletableFuture<String> resultFuture = geminiService.getResultAsync(GeminiType.질문, requestDto.code(), QuestionType.주석, additionalType);
         CompletableFuture<String> keywordFuture = geminiService.getResultAsync(GeminiType.키워드, requestDto.code(), null, null);
-        CompletableFuture<String> reviewFuture;
-        if (requestDto.isRecord()) {
-            reviewFuture = geminiService.getResultAsync(GeminiType.리뷰, requestDto.code(), null, null);
-        } else {
-            // reviewFuture가 필요 없을 경우 completedFuture(null)로 처리
-            reviewFuture = CompletableFuture.completedFuture(null);
-        }
+        CompletableFuture<String> reviewFuture = geminiService.getResultAsync(GeminiType.리뷰, requestDto.code(), null, null);
+//        if (requestDto.isRecord()) {
+//            reviewFuture = geminiService.getResultAsync(GeminiType.리뷰, requestDto.code(), null, null);
+//        } else {
+//            // reviewFuture가 필요 없을 경우 completedFuture(null)로 처리
+//            reviewFuture = CompletableFuture.completedFuture(null);
+//        }
 
         // 모든 비동기 작업이 완료될 때까지 대기
         return CompletableFuture.allOf(resultFuture, keywordFuture, reviewFuture)
@@ -70,7 +70,7 @@ public class CommentService {
                     keywordRepository.save(new Keyword(user, keywordResult));
 
                     // 요약 저장 (동기적으로 처리)
-                    reviewRepository.save(new Review(user, Utils.decodeString(requestDto.code()), reviewResult));
+                    reviewRepository.save(new Review(user, requestDto.title(), Utils.decodeString(requestDto.code()), reviewResult));
 
                     // CommentDTO 반환
                     return new CommentDTO(result);

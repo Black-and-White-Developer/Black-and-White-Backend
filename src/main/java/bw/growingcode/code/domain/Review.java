@@ -22,6 +22,9 @@ public class Review {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Column(name = "title", nullable = false, columnDefinition = "TEXT")
+    private String title;
+
     @Column(name = "code", nullable = false, columnDefinition = "TEXT")
     private String code;
 
@@ -32,8 +35,9 @@ public class Review {
     @Column(name = "create_at", nullable = false, updatable = false)
     private LocalDateTime createAt;
 
-    public Review(User user, String code, String content) {
+    public Review(User user, String title, String code, String content) {
         this.user = user;
+        this.title = title;
         this.code = code;
         this.content = content;
     }

@@ -7,6 +7,7 @@ import bw.growingcode.code.dto.RequestGenerateFeedbackDTO;
 import bw.growingcode.code.enums.GeminiType;
 import bw.growingcode.code.repository.KeywordRepository;
 import bw.growingcode.code.repository.ReviewRepository;
+import bw.growingcode.global.config.utils.Utils;
 import bw.growingcode.global.enums.QuestionType;
 import bw.growingcode.global.service.GeminiService;
 import bw.growingcode.user.domain.User;
@@ -59,7 +60,7 @@ public class FeedbackService {
                     keywordRepository.save(new Keyword(user, keywordResult));
 
                     // 트랜잭션 내에서 요약 저장
-                    reviewRepository.save(new Review(user, requestDto.code(), reviewResult));
+                    reviewRepository.save(new Review(user, requestDto.title(), Utils.decodeString(requestDto.code()), reviewResult));
 
                     return feedbackDTO;
                 } catch (Exception e) {
