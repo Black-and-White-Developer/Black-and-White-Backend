@@ -60,11 +60,10 @@ public class FeedbackService {
                     keywordRepository.save(new Keyword(user, keywordResult));
 
                     // 트랜잭션 내에서 요약 저장
-                    reviewRepository.save(new Review(user, requestDto.title(), Utils.decodeString(requestDto.code()), reviewResult));
+                    reviewRepository.save(new Review(user, requestDto.title(), reviewResult));
 
                     return feedbackDTO;
                 } catch (Exception e) {
-                    e.printStackTrace();
                     throw new RuntimeException("Failed to generate feedback", e);  // 예외 처리
                 }
             });

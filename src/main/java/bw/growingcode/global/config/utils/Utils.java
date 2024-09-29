@@ -1,5 +1,7 @@
 package bw.growingcode.global.config.utils;
 
+import io.jsonwebtoken.io.Decoders;
+
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
@@ -13,7 +15,7 @@ public class Utils {
     // decodeString 메서드를 static으로 선언
     public static String decodeString(String encodedString) {
         // 디코딩 로직 구현
-        byte[] decodedBytes = Base64.getUrlDecoder().decode(encodedString);
-        return new String(decodedBytes, StandardCharsets.UTF_8);
+        byte[] keyBytes = Decoders.BASE64.decode(encodedString);
+        return new String(keyBytes);
     }
 }

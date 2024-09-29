@@ -25,9 +25,6 @@ public class Review {
     @Column(name = "title", nullable = false, columnDefinition = "TEXT")
     private String title;
 
-    @Column(name = "code", nullable = false, columnDefinition = "TEXT")
-    private String code;
-
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
@@ -35,10 +32,9 @@ public class Review {
     @Column(name = "create_at", nullable = false, updatable = false)
     private LocalDateTime createAt;
 
-    public Review(User user, String title, String code, String content) {
+    public Review(User user, String title, String content) {
         this.user = user;
         this.title = title;
-        this.code = code;
         this.content = content;
     }
 }

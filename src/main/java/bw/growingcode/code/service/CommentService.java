@@ -70,7 +70,7 @@ public class CommentService {
                     keywordRepository.save(new Keyword(user, keywordResult));
 
                     // 요약 저장 (동기적으로 처리)
-                    reviewRepository.save(new Review(user, requestDto.title(), Utils.decodeString(requestDto.code()), reviewResult));
+                    reviewRepository.save(new Review(user, requestDto.title(), reviewResult));
 
                     // CommentDTO 반환
                     return new CommentDTO(result);
